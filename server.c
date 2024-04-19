@@ -5,16 +5,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#define PORT 8080
+#define PORT 49153
 #define MAX_BUFFER_SIZE 1024
 
-int main() 
-{
+int main() {
     int server_fd, new_socket;
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-    char buffer[MAX_BUFFER_SIZE] = {0};
+    char buffer[MAX_BUFFER_SIZE];
 
     // Creating a TCP socket
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
@@ -22,14 +21,14 @@ int main()
         perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
-    
+
     // Setting socket options
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
     {
         perror("Setsockopt failed");
         exit(EXIT_FAILURE);
     }
-    
+
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
@@ -48,32 +47,44 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    // Accepting an incoming connection
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0)
-    {
-        perror("Accept failed");
-        exit(EXIT_FAILURE);
+    while (1) {
+        // Accepting an incoming connection
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0)
+	{
+            perror("Accept failed");
+            exit(EXIT_FAILURE);
+        }
+
+        // Receiving data (image) from the client
+        FILE *image = fopen("received_imageSrv.jpg", "wb");
+        if (image == NULL)
+	{
+            perror("Failed to create image file");
+            exit(EXIT_FAILURE);
+        }
+
+        int bytes_received;
+        while ((bytes_received = recv(new_socket, buffer, MAX_BUFFER_SIZE, 0)) > 0)
+	{
+            fwrite(buffer, 1, bytes_received, image);
+            send(new_socket, buffer, bytes_received, 0);
+        }
+
+        if (bytes_received < 0)
+	{
+            perror("Receive failed");
+            exit(EXIT_FAILURE);
+        }
+
+        printf("Image received and echoed successfully.\n");
+
+        fclose(image);
+
+        // Closing client socket
+        close(new_socket);
     }
 
-    // Receiving data (images) from the client
-    FILE *image = fopen("received_image.jpg", "wb");
-    if (image == NULL)
-    {
-        perror("Failed to create image file");
-        exit(EXIT_FAILURE);
-    }
-
-    int bytes_received;
-    while ((bytes_received = recv(new_socket, buffer, MAX_BUFFER_SIZE, 0)) > 0)
-    {
-        fwrite(buffer, 1, bytes_received, image);
-    }
-    fclose(image);
-    printf("Image received successfully.\n");
-
-    // Closing sockets
-    close(new_socket);
     close(server_fd);
-    
+
     return 0;
 }

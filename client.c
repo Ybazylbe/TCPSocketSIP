@@ -6,14 +6,14 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define PORT 8080
+#define PORT 49153
 #define MAX_BUFFER_SIZE 1024
 
-int main()
-{
+int main() {
     int sockfd;
     struct sockaddr_in serv_addr;
-    char buffer[MAX_BUFFER_SIZE] = {0};
+    char buffer[MAX_BUFFER_SIZE];
+    FILE *image;
 
     // Creating a TCP socket
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -39,26 +39,40 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    // Opening an image to send
-    FILE *image = fopen("./image location/image.jpg", "rb");
+    // Open an image file to send
+    image = fopen("/nfs/homes/ybazylbe/GIT/TCPSocket/echo/42.jpg", "rb");
     if (image == NULL)
     {
         perror("Failed to open image file");
         exit(EXIT_FAILURE);
     }
 
-    // Reading an image and sending it to the server
+    // Sending the image to the server
     int bytes_read;
     while ((bytes_read = fread(buffer, 1, MAX_BUFFER_SIZE, image)) > 0)
     {
         send(sockfd, buffer, bytes_read, 0);
     }
-    fclose(image);
-    printf("Image sent successfully.\n");
 
-    // Closing a socket
+    // Receiving echoed image from the server
+    image = freopen("received_imageCl.jpg", "wb", image);
+    if (image == NULL)
+    {
+        perror("Failed to create image file");
+        exit(EXIT_FAILURE);
+    }
+
+    int bytes_received;
+    while ((bytes_received = recv(sockfd, buffer, MAX_BUFFER_SIZE, 0)) > 0)
+    {
+        fwrite(buffer, 1, bytes_received, image);
+    }
+
+    printf("Image received successfully.\n");
+
+    // Closing the socket and file
+    fclose(image);
     close(sockfd);
 
     return 0;
 }
-
