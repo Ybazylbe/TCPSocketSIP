@@ -8,7 +8,8 @@
 #define PORT 49153
 #define MAX_BUFFER_SIZE 1024
 
-int main() {
+int main()
+{
     int server_fd, new_socket;
     struct sockaddr_in address;
     int opt = 1;
@@ -47,7 +48,8 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    while (1) {
+    while (1)
+    {
         // Accepting an incoming connection
         if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0)
 	{
@@ -55,19 +57,12 @@ int main() {
             exit(EXIT_FAILURE);
         }
 
-        // Receiving data (image) from the client
-        FILE *image = fopen("received_imageSrv.jpg", "wb");
-        if (image == NULL)
-	{
-            perror("Failed to create image file");
-            exit(EXIT_FAILURE);
-        }
-
+        // Receiving data (image) from the client and sending back
         int bytes_received;
         while ((bytes_received = recv(new_socket, buffer, MAX_BUFFER_SIZE, 0)) > 0)
 	{
-            fwrite(buffer, 1, bytes_received, image);
             send(new_socket, buffer, bytes_received, 0);
+            printf("Sent packet with %d bytes to client. Received packet with %d bytes from client.\n", bytes_received, bytes_received);
         }
 
         if (bytes_received < 0)
@@ -77,8 +72,6 @@ int main() {
         }
 
         printf("Image received and echoed successfully.\n");
-
-        fclose(image);
 
         // Closing client socket
         close(new_socket);
